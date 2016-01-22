@@ -783,7 +783,7 @@ def SpeedAccelM2(address,accel,speed):
 	return _write4S4(address,Cmd.M2SPEEDACCEL,accel,speed)
 
 def SpeedAccelM1M2(address,accel,speed1,speed2):
-	return _write4S4S4(address,Cmd.M1SPEEDACCEL,accel,speed1,speed2)
+	return _write4S4S4(address,Cmd.MIXEDSPEEDACCEL,accel,speed1,speed2)
 
 def SpeedDistanceM1(address,speed,distance,buffer):
 	return _writeS441(address,Cmd.M1SPEEDDIST,speed,distance,buffer)
