@@ -286,7 +286,7 @@ def _read_n(address,cmd,args):
 
 def _writechecksum():
 	global _crc
-	_writeword(_crc&0x7F)
+	_writebyte(_crc&0x7F)
 	val = _readbyte()
 	if val[0]:
 		return True
