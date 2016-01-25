@@ -101,36 +101,36 @@ class Cmd():
 			
 #Private Functions
 
-def crc_clear():
-	global _crc
-	_crc = 0
+def checksum_clear():
+	global _checksum
+	_checksum = 0
 	return
 	
-def crc_update(data):
-	global _crc
-	_crc = _crc + data
+def checksum_update(data):
+	global _checksum
+	_checksum = _checksum + data
 	return
 
 def _sendcommand(address,command):
-	crc_clear()
-	crc_update(address)
+	checksum_clear()
+	checksum_update(address)
 	port.write(chr(address))
-	crc_update(command)
+	checksum_update(command)
 	port.write(chr(command))
 	return
 
 def _readchecksumword():
 	data = port.read(1)
 	if len(data)==1:
-		crc = ord(data)
-		return (1,crc)	
+		checksum = ord(data)
+		return (1,checksum)	
 	return (0,0)
 	
 def _readbyte():
 	data = port.read(1)
 	if len(data):
 		val = ord(data)
-		crc_update(val)
+		checksum_update(val)
 		return (1,val)	
 	return (0,0)
 	
@@ -163,7 +163,7 @@ def _readslong():
 	return (0,0)
 
 def _writebyte(val):
-	crc_update(val&0xFF)
+	checksum_update(val&0xFF)
 	port.write(chr(val&0xFF))
 
 def _writesbyte(val):
@@ -186,16 +186,16 @@ def _writeslong(val):
 	_writelong(val)
 
 def _read1(address,cmd):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		port.flushInput()
 		_sendcommand(address,cmd)
 		val1 = _readbyte()
 		if val1[0]:
-			crc = _readchecksumword()
-			if crc[0]:
-				if _crc&0x7F!=crc[1]&0x7F:
+			checksum = _readchecksumword()
+			if checksum[0]:
+				if _checksum&0x7F!=checksum[1]&0x7F:
 					return (0,0)
 				return (1,val1[1])
 		trys-=1
@@ -204,16 +204,16 @@ def _read1(address,cmd):
 	return (0,0)
 
 def _read2(address,cmd):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		port.flushInput()
 		_sendcommand(address,cmd)
 		val1 = _readword()
 		if val1[0]:
-			crc = _readchecksumword()
-			if crc[0]:
-				if _crc&0x7F!=crc[1]&0x7F:
+			checksum = _readchecksumword()
+			if checksum[0]:
+				if _checksum&0x7F!=checksum[1]&0x7F:
 					return (0,0)
 				return (1,val1[1])
 		trys-=1
@@ -222,16 +222,16 @@ def _read2(address,cmd):
 	return (0,0)
 
 def _read4(address,cmd):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		port.flushInput()
 		_sendcommand(address,cmd)
 		val1 = _readlong()
 		if val1[0]:
-			crc = _readchecksumword()
-			if crc[0]:
-				if _crc&0x7F!=crc[1]&0x7F:
+			checksum = _readchecksumword()
+			if checksum[0]:
+				if _checksum&0x7F!=checksum[1]&0x7F:
 					return (0,0)
 				return (1,val1[1])
 		trys-=1
@@ -240,7 +240,7 @@ def _read4(address,cmd):
 	return (0,0)
 
 def _read4_1(address,cmd):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		port.flushInput()
@@ -249,9 +249,9 @@ def _read4_1(address,cmd):
 		if val1[0]:
 			val2 = _readbyte()
 			if val2[0]:
-				crc = _readchecksumword()
-				if crc[0]:
-					if _crc&0x7F!=crc[1]&0x7F:
+				checksum = _readchecksumword()
+				if checksum[0]:
+					if _checksum&0x7F!=checksum[1]&0x7F:
 						return (0,0)
 					return (1,val1[1],val2[1])
 		trys-=1
@@ -260,7 +260,7 @@ def _read4_1(address,cmd):
 	return (0,0)
 
 def _read_n(address,cmd,args):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		port.flushInput()
@@ -278,15 +278,22 @@ def _read_n(address,cmd,args):
 			data.append(val[1])
 		if failed:
 			continue
-		crc = _readchecksumword()
-		if crc[0]:
-			if _crc&0x7F==crc[1]&0x7F:
+		checksum = _readchecksumword()
+		if checksum[0]:
+			if _checksum&0x7F==checksum[1]&0x7F:
 				return (data);
 	return (0,0,0,0,0)
 
 def _writechecksum():
-	global _crc
-	_writebyte(_crc&0x7F)
+	"""Write checksum
+
+	In v4 and higher of the firmward, all commands respond with 
+	0xFF in the event of a success. In v3, there is no such response.
+	As such, you may get a False from the command you sent, when
+	it actually went through okay.
+	"""
+	global _checksum
+	_writebyte(_checksum&0x7F)
 	val = _readbyte()
 	if val[0]:
 		return True
@@ -698,7 +705,7 @@ def ResetEncoders(address):
 	return _write0(address,Cmd.RESETENC)
 
 def ReadVersion(address):
-	global _crc
+	global _checksum
 	trys=_trystimeout
 	while 1:
 		port.flushInput()
@@ -709,7 +716,7 @@ def ReadVersion(address):
 			data = port.read(1)
 			if len(data):
 				val = ord(data)
-				crc_update(val)
+				checksum_update(val)
 				if(val==0):
 					break
 				str+=data[0]
@@ -717,9 +724,9 @@ def ReadVersion(address):
 				passed = False
 				break
 		if passed:
-			crc = _readchecksumword()
-			if crc[0]:
-				if _crc&0x7F==crc[1]&0x7F:
+			checksum = _readchecksumword()
+			if checksum[0]:
+				if _checksum&0x7F==checksum[1]&0x7F:
 					return (1,str)
 				else:
 					time.sleep(0.01)
@@ -931,7 +938,7 @@ def SetPinFunctions(address,S3mode,S4mode,S5mode):
 	return _write111(address,Cmd.SETPINFUNCTIONS,S3mode,S4mode,S5mode)
 
 def ReadPinFunctions(address):
-	global _crc
+	global _checksum
 	trys = _trystimeout
 	while 1:
 		_sendcommand(address,Cmd.GETPINFUNCTIONS)
@@ -941,9 +948,9 @@ def ReadPinFunctions(address):
 			if val1[0]:
 				val3 = _readbyte()
 				if val1[0]:
-					crc = _readchecksumword()
-					if crc[0]:
-						if _crc&0x7F!=crc[1]&0x7F:
+					checksum = _readchecksumword()
+					if checksum[0]:
+						if _checksum&0x7F!=checksum[1]&0x7F:
 							return (0,0)
 						return (1,val1[1],val2[1],val3[1])
 		trys-=1
