@@ -4,6 +4,7 @@ import struct
 import time
 
 _trystimeout = 3
+_verifyChecksum = False
 
 #Command Enums
 
@@ -287,13 +288,25 @@ def _read_n(address,cmd,args):
 def _writechecksum():
 	"""Write checksum
 
-	In v4 and higher of the firmward, all commands respond with 
+	In v4 and higher of the firmware, all commands respond with 
 	0xFF in the event of a success. In v3, there is no such response.
 	As such, you may get a False from the command you sent, when
 	it actually went through okay.
+
+	Using v3.1.9 firmware, when using commands like 'SpeedM1', there
+	is a considerable delay because of the pySerial timeout being set
+	in conjunction with the fact that there will be no response. So
+	each call to 'SpeedM1' will block for 100ms minimum.
+
+	Calling r.Open(...,...,verifyChecksum=False) skips verifying the checksum.
 	"""
 	global _checksum
 	_writebyte(_checksum&0x7F)
+
+
+	if not _verifyChecksum:
+		return True
+
 	val = _readbyte()
 	if val[0]:
 		return True
@@ -1033,8 +1046,11 @@ def SetPWMMode(address,mode):
 def ReadPWMMode(address):
 	return _read1(address,Cmd.GETPWMMODE)
 
-def Open(comport, rate):
+def Open(comport, rate, verifyChecksum=False):
 	global port
 	port = serial.Serial(comport, baudrate=rate, timeout=0.1, interCharTimeout=0.01)
+
+	global _dontVerifyChecksum
+	_verifyChecksum = verifyChecksum
 	return
 
