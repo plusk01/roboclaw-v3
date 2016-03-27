@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name='rcv3',
-	version='1.0',
+	version='1.1',
 	url='https://github.com/plusk01/roboclaw-v3',
 	description=('Python library for RoboClaw v3 downgraded from v5'),
 	author='Parker Lusk',
